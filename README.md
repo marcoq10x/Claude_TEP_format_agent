@@ -13,6 +13,7 @@ AI Agent that formats exam content from LLM outputs into properly formatted MS W
   - Answer key starts on a new page
   - Questions and choices kept together (not split across pages)
 - **Flexible Input**: Handles various LLM output formats with Q1, 1., etc. numbering
+- **Web Dashboard**: Beautiful glass-effect UI with real-time formatting preview
 
 ## Installation
 
@@ -26,6 +27,23 @@ pip install -r requirements.txt
 ```
 
 ## Usage
+
+### Web Dashboard
+
+Launch the beautiful web interface with glass-effect design:
+
+```bash
+python web/app.py
+```
+
+Then open http://localhost:5000 in your browser.
+
+**Features:**
+- Split-panel interface (input left, output right)
+- Real-time formatting preview
+- Download as DOCX, PDF, or TXT
+- Dark gradient theme with animated effects
+- Apple-style glass buttons
 
 ### Command Line
 
@@ -108,6 +126,13 @@ Claude_TEP_format_agent/
 │   ├── word_formatter.py    # MS Word output
 │   ├── pdf_formatter.py     # PDF output
 │   └── txt_formatter.py     # Plain text output
+├── web/
+│   ├── app.py               # Flask web server
+│   ├── templates/
+│   │   └── index.html       # Dashboard HTML
+│   └── static/
+│       ├── css/style.css    # Glass-effect styling
+│       └── js/app.js        # Frontend logic
 ├── tests/
 │   └── test_parser.py       # Parser unit tests
 ├── samples/
@@ -121,6 +146,7 @@ Claude_TEP_format_agent/
 - `python-docx` - Word document generation
 - `reportlab` - PDF generation
 - `click` - CLI interface
+- `flask` - Web dashboard
 
 ## Testing
 
