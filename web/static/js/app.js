@@ -138,55 +138,75 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Display formatted output in the right panel
+     * Matches VBA macro format exactly:
+     * - Questions: "#.    <question>" with blank line after
+     * - Choices: indented "A.    <choice>"
+     * - Answers: "#.    A)    <source> Answer/Citation: <citation>"
      */
     function displayFormattedOutput(data) {
         const { questions, answers } = data;
 
         let html = '';
 
-        // Questions section
+        // Questions section - formatted exactly like VBA output
         if (questions && questions.length > 0) {
             html += '<div class="formatted-section">';
-            html += '<div class="section-title">Questions</div>';
+            html += '<div class="section-title">QUESTIONS</div>';
+            html += '<div class="formatted-content">';
 
             questions.forEach(q => {
-                html += '<div class="question-block">';
-                html += `<div class="question-text">`;
-                html += `<span class="question-number">${q.number}.</span> ${escapeHtml(q.text)}`;
+                // Question line: "#.    <question text>"
+                html += `<div class="format-line question-line">`;
+                html += `<span class="line-number">${q.number}.</span>`;
+                html += `<span class="line-tab"></span>`;
+                html += `<span class="line-text">${escapeHtml(q.text)}</span>`;
                 html += '</div>';
 
+                // Blank line after question
+                html += '<div class="format-line blank-line"></div>';
+
+                // Choices - indented
                 if (q.choices && q.choices.length > 0) {
-                    html += '<div class="choices-list">';
                     q.choices.forEach(c => {
-                        html += `<div class="choice-item">`;
+                        html += `<div class="format-line choice-line">`;
+                        html += `<span class="choice-indent"></span>`;
                         html += `<span class="choice-letter">${c.letter}.</span>`;
-                        html += escapeHtml(c.text);
+                        html += `<span class="line-tab"></span>`;
+                        html += `<span class="line-text">${escapeHtml(c.text)}</span>`;
                         html += '</div>';
                     });
-                    html += '</div>';
                 }
 
-                html += '</div>';
+                // Blank line after choices (between questions)
+                html += '<div class="format-line blank-line"></div>';
             });
 
             html += '</div>';
+            html += '</div>';
         }
 
-        // Answers section
+        // Answer Key section - formatted exactly like VBA output
         if (answers && answers.length > 0) {
-            html += '<div class="formatted-section">';
-            html += '<div class="section-title">Answer Key</div>';
+            html += '<div class="formatted-section answer-section">';
+            html += '<div class="section-title">ANSWER KEY</div>';
+            html += '<div class="section-note">(Starts on new page in document)</div>';
+            html += '<div class="formatted-content">';
 
             answers.forEach(a => {
-                html += '<div class="answer-block">';
-                html += '<div class="answer-text">';
-                html += `<span class="answer-number">${a.number}.</span>`;
-                html += `<span class="answer-letter">${a.letter}</span>`;
-                html += `<span class="answer-payload">${escapeHtml(a.payload)}</span>`;
+                // Answer line: "#.    A)    <payload>"
+                html += `<div class="format-line answer-line">`;
+                html += `<span class="line-number">${a.number}.</span>`;
+                html += `<span class="line-tab"></span>`;
+                html += `<span class="answer-letter-box">${a.letter})</span>`;
+                html += `<span class="line-tab"></span>`;
+                html += `<span class="line-text">${escapeHtml(a.payload)}</span>`;
                 html += '</div>';
-                html += '</div>';
+
+                // Blank line after each answer
+                html += '<div class="format-line blank-line"></div>';
             });
 
+            html += '</div>';
             html += '</div>';
         }
 

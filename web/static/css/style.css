@@ -292,23 +292,105 @@ body {
     font-family: 'Inter', sans-serif;
 }
 
-/* Formatted Content Styles */
+/* Formatted Content Styles - Document Preview */
 .formatted-section {
-    margin-bottom: 30px;
+    margin-bottom: 25px;
 }
 
 .section-title {
     font-family: 'Inter', sans-serif;
-    font-size: 0.75rem;
-    font-weight: 600;
+    font-size: 0.7rem;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 2px;
     color: var(--accent-cyan);
-    margin-bottom: 15px;
+    margin-bottom: 12px;
     padding-bottom: 8px;
     border-bottom: 1px solid rgba(0, 212, 255, 0.3);
 }
 
+.section-note {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-bottom: 15px;
+    margin-top: -8px;
+}
+
+.answer-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 2px dashed rgba(0, 212, 255, 0.3);
+}
+
+.formatted-content {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 12pt;
+    line-height: 1.5;
+    color: var(--text-primary);
+}
+
+/* Format lines - mimics Word document layout */
+.format-line {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 2px;
+}
+
+.blank-line {
+    height: 18px; /* Approximately 12pt blank line */
+}
+
+/* Question line styling */
+.question-line {
+    font-weight: normal;
+}
+
+.line-number {
+    min-width: 25px;
+    color: var(--text-primary);
+    font-weight: normal;
+}
+
+.line-tab {
+    width: 30px; /* Tab spacing */
+    flex-shrink: 0;
+}
+
+.line-text {
+    flex: 1;
+    color: var(--text-primary);
+}
+
+/* Choice line styling - indented */
+.choice-line {
+    padding-left: 0;
+}
+
+.choice-indent {
+    width: 18px; /* 0.25 inch indent simulation */
+    flex-shrink: 0;
+}
+
+.choice-letter {
+    min-width: 20px;
+    color: var(--text-primary);
+    font-weight: normal;
+}
+
+/* Answer line styling */
+.answer-line {
+    font-weight: normal;
+}
+
+.answer-letter-box {
+    min-width: 25px;
+    color: var(--accent-cyan);
+    font-weight: 600;
+}
+
+/* Legacy styles for backward compatibility */
 .question-block {
     margin-bottom: 25px;
     padding: 15px;
@@ -335,12 +417,6 @@ body {
 .choice-item {
     margin-bottom: 6px;
     color: var(--text-secondary);
-}
-
-.choice-letter {
-    color: var(--text-primary);
-    font-weight: 500;
-    margin-right: 8px;
 }
 
 .answer-block {
