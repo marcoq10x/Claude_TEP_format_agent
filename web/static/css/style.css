@@ -716,6 +716,118 @@ body {
     background: rgba(255, 255, 255, 0.3);
 }
 
+/* ==========================================
+   VBA Word Document Format - Exact Match
+   ========================================== */
+
+/* Section Headers */
+.section-header {
+    font-family: 'Inter', -apple-system, sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: var(--accent-cyan);
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+}
+
+/* Document Preview Container - looks like a Word document */
+.document-preview {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 12pt;
+    line-height: 1.0;
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+/* Base document line */
+.doc-line {
+    display: flex;
+    align-items: flex-start;
+    min-height: 18px; /* Single line height at 12pt */
+}
+
+/* Blank line - 12pt spacing (single blank line) */
+.doc-line.blank {
+    height: 18px;
+}
+
+/* Question line: "#.    <question text>" */
+.question-line {
+    margin-bottom: 0;
+}
+
+.question-line .q-number {
+    min-width: 30px;
+    flex-shrink: 0;
+    color: var(--text-primary);
+}
+
+.question-line .q-text {
+    flex: 1;
+    color: var(--text-primary);
+}
+
+/* Choice line: indented "A.    <choice text>" */
+.choice-line {
+    padding-left: 24px; /* 0.25 inch indent simulation */
+}
+
+.choice-line .choice-letter {
+    min-width: 30px;
+    flex-shrink: 0;
+    color: var(--text-primary);
+}
+
+.choice-line .choice-text {
+    flex: 1;
+    color: var(--text-primary);
+}
+
+/* Answer line: "#.    A)    <payload>" */
+.answer-line {
+    margin-bottom: 0;
+}
+
+.answer-line .a-number {
+    min-width: 30px;
+    flex-shrink: 0;
+    color: var(--text-primary);
+}
+
+.answer-line .a-letter {
+    min-width: 35px;
+    flex-shrink: 0;
+    color: var(--accent-cyan);
+    font-weight: 600;
+}
+
+.answer-line .a-payload {
+    flex: 1;
+    color: var(--text-secondary);
+}
+
+/* Answer Key Section */
+.answer-key-section {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 2px dashed rgba(0, 212, 255, 0.3);
+}
+
+/* Page break note */
+.page-break-note {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-bottom: 15px;
+    margin-top: -10px;
+}
+
 /* Responsive */
 @media (max-width: 1200px) {
     .container {

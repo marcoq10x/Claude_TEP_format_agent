@@ -138,10 +138,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Display formatted output in the right panel
-     * Matches VBA macro format exactly:
-     * - Questions: "#.    <question>" with blank line after
-     * - Choices: indented "A.    <choice>"
-     * - Answers: "#.    A)    <source> Answer/Citation: <citation>"
+     * Matches VBA macro format EXACTLY:
+     *
+     * QUESTIONS:
+     * 1.    <question text>
+     * <blank line>
+     *       A.    <choice>
+     *       B.    <choice>
+     *       C.    <choice>
+     *       D.    <choice>
+     * <blank line>
+     *
+     * ANSWERS:
+     * 1.    A)    <source> Answer/Citation: <citation>
+     * <blank line>
      */
     function displayFormattedOutput(data) {
         const { questions, answers } = data;
@@ -151,34 +161,31 @@ document.addEventListener('DOMContentLoaded', () => {
         // Questions section - formatted exactly like VBA output
         if (questions && questions.length > 0) {
             html += '<div class="formatted-section">';
-            html += '<div class="section-title">QUESTIONS</div>';
-            html += '<div class="formatted-content">';
+            html += '<div class="section-header">QUESTIONS</div>';
+            html += '<div class="document-preview">';
 
             questions.forEach(q => {
                 // Question line: "#.    <question text>"
-                html += `<div class="format-line question-line">`;
-                html += `<span class="line-number">${q.number}.</span>`;
-                html += `<span class="line-tab"></span>`;
-                html += `<span class="line-text">${escapeHtml(q.text)}</span>`;
+                html += `<div class="doc-line question-line">`;
+                html += `<span class="q-number">${q.number}.</span>`;
+                html += `<span class="q-text">${escapeHtml(q.text)}</span>`;
                 html += '</div>';
 
                 // Blank line after question
-                html += '<div class="format-line blank-line"></div>';
+                html += '<div class="doc-line blank"></div>';
 
-                // Choices - indented
+                // Choices - indented with 0.25 inch
                 if (q.choices && q.choices.length > 0) {
-                    q.choices.forEach(c => {
-                        html += `<div class="format-line choice-line">`;
-                        html += `<span class="choice-indent"></span>`;
+                    q.choices.forEach((c, idx) => {
+                        html += `<div class="doc-line choice-line">`;
                         html += `<span class="choice-letter">${c.letter}.</span>`;
-                        html += `<span class="line-tab"></span>`;
-                        html += `<span class="line-text">${escapeHtml(c.text)}</span>`;
+                        html += `<span class="choice-text">${escapeHtml(c.text)}</span>`;
                         html += '</div>';
                     });
                 }
 
-                // Blank line after choices (between questions)
-                html += '<div class="format-line blank-line"></div>';
+                // Blank line after last choice
+                html += '<div class="doc-line blank"></div>';
             });
 
             html += '</div>';
@@ -187,23 +194,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Answer Key section - formatted exactly like VBA output
         if (answers && answers.length > 0) {
-            html += '<div class="formatted-section answer-section">';
-            html += '<div class="section-title">ANSWER KEY</div>';
-            html += '<div class="section-note">(Starts on new page in document)</div>';
-            html += '<div class="formatted-content">';
+            html += '<div class="formatted-section answer-key-section">';
+            html += '<div class="section-header">ANSWER KEY</div>';
+            html += '<div class="page-break-note">(Starts on new page in Word/PDF)</div>';
+            html += '<div class="document-preview">';
 
             answers.forEach(a => {
                 // Answer line: "#.    A)    <payload>"
-                html += `<div class="format-line answer-line">`;
-                html += `<span class="line-number">${a.number}.</span>`;
-                html += `<span class="line-tab"></span>`;
-                html += `<span class="answer-letter-box">${a.letter})</span>`;
-                html += `<span class="line-tab"></span>`;
-                html += `<span class="line-text">${escapeHtml(a.payload)}</span>`;
+                html += `<div class="doc-line answer-line">`;
+                html += `<span class="a-number">${a.number}.</span>`;
+                html += `<span class="a-letter">${a.letter})</span>`;
+                html += `<span class="a-payload">${escapeHtml(a.payload)}</span>`;
                 html += '</div>';
 
                 // Blank line after each answer
-                html += '<div class="format-line blank-line"></div>';
+                html += '<div class="doc-line blank"></div>';
             });
 
             html += '</div>';
