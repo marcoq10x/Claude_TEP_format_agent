@@ -82,6 +82,7 @@ def format_text():
 
         response = {
             'success': True,
+            'title': exam.title or 'Exam',
             'questions': formatted_questions,
             'answers': formatted_answers,
             'exam_type': exam_type.value,

@@ -45,6 +45,7 @@ class Answer:
 @dataclass
 class ParsedExam:
     """Contains all parsed exam content."""
+    title: str = ""
     questions: list[Question] = field(default_factory=list)
     answers: list[Answer] = field(default_factory=list)
 
@@ -112,6 +113,9 @@ class ExamParser:
 
         # Normalize text
         text = self._normalize_text(text)
+
+        # Extract title (text before first question)
+        result.title = self._extract_title(text)
         lines = text.split('\n')
 
         current_question: Optional[Question] = None
@@ -158,6 +162,28 @@ class ExamParser:
             result.questions.append(current_question)
 
         return result
+
+    def _extract_title(self, text: str) -> str:
+        """Extract title from text (lines before the first question number)."""
+        lines = text.split('\n')
+        title_lines = []
+
+        for line in lines:
+            cleaned = self._clean_line(line)
+            if not cleaned:
+                continue
+
+            # Stop if this line starts a question
+            if self.QUESTION_PATTERN.match(cleaned):
+                break
+
+            # Stop if this is an answer key header
+            if self._is_answer_key_header(cleaned):
+                break
+
+            title_lines.append(cleaned)
+
+        return " ".join(title_lines).strip()
 
     def _normalize_text(self, text: str) -> str:
         """Normalize various text encodings and line endings."""
@@ -465,7 +491,10 @@ class ExamParser:
         return ''
 
     def _extract_payload(self, text: str, ans_letter: str) -> str:
-        """Extract the payload/citation from answer text."""
+        """Extract the payload (source + citation) from answer text.
+
+        Returns the source and citation without any 'Answer/Citation:' label.
+        """
         # Remove quoted segment
         text = self._remove_quoted_segment(text)
 
@@ -475,36 +504,21 @@ class ExamParser:
         # Remove leading answer marker
         text = self._strip_answer_marker(text, ans_letter)
 
-        # Check for Answer/Citation label
+        # Strip "Answer/Citation" label if present in input
         ac_pos = text.upper().find('ANSWER/CITATION')
         if ac_pos != -1:
             before = text[:ac_pos].strip()
-            after = text[ac_pos:].strip()
-
-            # Normalize the Answer/Citation label
-            after = self._normalize_citation_label(after)
+            after = text[ac_pos + len('ANSWER/CITATION'):].strip()
+            # Remove colon after label
+            if after.startswith(':'):
+                after = after[1:].strip()
             before = self._strip_answer_marker(before, ans_letter)
+            parts = [p for p in [before, after] if p]
+            return " ".join(parts).strip() if parts else "?"
 
-            if before:
-                return f"{before} {after}".strip()
-            return after
-
-        # Extract page citation
-        citation = self._extract_citation(text)
-        if not citation:
-            citation = self._find_page_reference(text)
-        if not citation:
-            citation = '?'
-
-        # Clean up remainder
-        remainder = self._remove_citation_from_text(text)
-        remainder = self._strip_answer_marker(remainder, ans_letter)
-
-        citation_part = f"Answer/Citation: {citation}"
-
-        if remainder:
-            return f"{remainder} {citation_part}".strip()
-        return citation_part
+        # No label - return the text as-is (source + citation)
+        text = self._strip_answer_marker(text, ans_letter)
+        return text.strip() if text.strip() else "?"
 
     def _remove_quoted_segment(self, text: str) -> str:
         """Remove first quoted segment from text."""

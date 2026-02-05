@@ -755,6 +755,28 @@ body {
     border-bottom: 1px solid rgba(0, 212, 255, 0.3);
 }
 
+/* Document Header - centered, bold, 20pt equivalent */
+.doc-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.doc-header-title {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 20pt;
+    font-weight: bold;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.doc-header-section {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 20pt;
+    font-weight: bold;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
 /* Document Preview Container - looks like a Word document */
 .document-preview {
     font-family: 'Times New Roman', Times, serif;

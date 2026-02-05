@@ -16,6 +16,7 @@ class TxtFormatter(BaseFormatter):
     Formatter that produces plain text (.txt) files.
 
     Applies formatting rules:
+    - 2-line centered header (Title + section name)
     - Questions formatted as "#.\\t<text>"
     - Choices indented with spaces as "    A.\\t<text>"
     - Blank line after each choice
@@ -24,31 +25,22 @@ class TxtFormatter(BaseFormatter):
     - Final answers: "#.\\t<letter>)\\t<source> (<citation>)"
     """
 
-    # Number of spaces for choice indentation (simulating 0.25 inch)
     CHOICE_INDENT = "    "  # 4 spaces
-
-    # Page break indicator for text files
-    PAGE_BREAK = "\n" + "=" * 60 + "\n" + "ANSWER KEY" + "\n" + "=" * 60 + "\n"
+    HEADER_WIDTH = 60  # Width for centering header text
 
     def get_extension(self) -> str:
         return '.txt'
 
     def format(self, exam: ParsedExam, output_path: Union[str, Path],
                exam_type: ExamType = ExamType.FINAL) -> Path:
-        """
-        Format exam content into a plain text file.
-
-        Args:
-            exam: ParsedExam containing questions and answers
-            output_path: Path for the output .txt file
-            exam_type: Type of exam (practice or final)
-
-        Returns:
-            Path to the created text file
-        """
         output_path = self.ensure_extension(output_path)
 
         lines = []
+        title = exam.title or "Exam"
+
+        # Questions header
+        lines.extend(self._format_header(title, "Questions"))
+        lines.append("")
 
         # Add questions
         for question in exam.questions:
@@ -56,41 +48,44 @@ class TxtFormatter(BaseFormatter):
 
         # Add answer key section
         if exam.answers:
-            lines.append(self.PAGE_BREAK)
+            lines.append("")
+            lines.append("=" * self.HEADER_WIDTH)
+            lines.append("")
+            lines.extend(self._format_header(title, "Answer Key"))
+            lines.append("")
+
             for answer in exam.answers:
                 lines.append(self._format_answer(answer, exam_type))
-                lines.append("")  # Blank line after each answer
+                lines.append("")
 
-        # Write to file
         content = "\n".join(lines)
         output_path.write_text(content, encoding='utf-8')
 
         return output_path
 
-    def _format_question(self, question: Question) -> list[str]:
-        """
-        Format a question and its choices as text lines.
+    def _format_header(self, title: str, section_name: str) -> list[str]:
+        """Create centered 2-line header."""
+        return [
+            title.center(self.HEADER_WIDTH),
+            section_name.center(self.HEADER_WIDTH),
+        ]
 
-        Returns a list of lines with blank lines between each choice.
-        """
+    def _format_question(self, question: Question) -> list[str]:
+        """Format a question and its choices as text lines."""
         lines = []
 
-        # Question text
         lines.append(f"{question.number}.\t{question.text}")
-        lines.append("")  # Blank line after question text
+        lines.append("")
 
-        # Choices - each followed by a blank line
         for choice in question.choices:
             lines.append(f"{self.CHOICE_INDENT}{choice.letter}.\t{choice.text}")
-            lines.append("")  # Blank line after each choice
+            lines.append("")
 
         return lines
 
     def _format_answer(self, answer: Answer, exam_type: ExamType) -> str:
         """Format an answer key entry as a single line."""
         if exam_type == ExamType.PRACTICE:
-            # Practice: "#.    <letter>    <code ref>"
             return f"{answer.question_number}.\t{answer.answer_letter}\t{answer.payload}"
         else:
-            # Final: "#.    <letter>)    <source> (<citation>)"
             return f"{answer.question_number}.\t{answer.answer_letter})\t{answer.payload}"

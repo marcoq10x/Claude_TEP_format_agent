@@ -186,15 +186,18 @@ document.addEventListener('DOMContentLoaded', () => {
      * #.    <letter>)    <source>    (<citation>)
      */
     function displayFormattedOutput(data, examType) {
-        const { questions, answers } = data;
+        const { questions, answers, title } = data;
+        const examTitle = title || 'Exam';
 
         let html = '';
-        const typeLabel = examType === 'practice' ? 'PRACTICE EXAM' : 'FINAL EXAM';
 
         // Questions section - same format for both exam types
         if (questions && questions.length > 0) {
             html += '<div class="formatted-section">';
-            html += `<div class="section-header">${typeLabel} - QUESTIONS</div>`;
+            html += '<div class="doc-header">';
+            html += `<div class="doc-header-title">${escapeHtml(examTitle)}</div>`;
+            html += '<div class="doc-header-section">Questions</div>';
+            html += '</div>';
             html += '<div class="document-preview">';
 
             questions.forEach(q => {
@@ -228,7 +231,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Answer Key section - different format based on exam type
         if (answers && answers.length > 0) {
             html += '<div class="formatted-section answer-key-section">';
-            html += `<div class="section-header">${typeLabel} - ANSWER KEY</div>`;
+            html += '<div class="doc-header">';
+            html += `<div class="doc-header-title">${escapeHtml(examTitle)}</div>`;
+            html += '<div class="doc-header-section">Answer Key</div>';
+            html += '</div>';
             html += '<div class="page-break-note">(Starts on new page in Word/PDF)</div>';
             html += '<div class="document-preview">';
 

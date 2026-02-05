@@ -24,7 +24,9 @@ class WordFormatter(BaseFormatter):
     Applies formatting rules:
     - Times New Roman, 12pt font
     - 0.5 inch margins
+    - 2-line centered bold 20pt header (Title + section name)
     - Questions formatted as "#.\\t<text>"
+    - Entire question block kept together on same page
     - Choices each on own line with blank line after each
     - Answer key on a new page
     - Practice exam answers: "#.\\t<letter>\\t<code ref>"
@@ -36,21 +38,15 @@ class WordFormatter(BaseFormatter):
 
     def format(self, exam: ParsedExam, output_path: Union[str, Path],
                exam_type: ExamType = ExamType.FINAL) -> Path:
-        """
-        Format exam content into a Word document.
-
-        Args:
-            exam: ParsedExam containing questions and answers
-            output_path: Path for the output .docx file
-            exam_type: Type of exam (practice or final)
-
-        Returns:
-            Path to the created Word document
-        """
         output_path = self.ensure_extension(output_path)
 
         doc = Document()
         self._setup_document(doc)
+
+        title = exam.title or "Exam"
+
+        # Questions header
+        self._add_header(doc, title, "Questions")
 
         # Add questions section
         for question in exam.questions:
@@ -59,6 +55,7 @@ class WordFormatter(BaseFormatter):
         # Add answer key on a new page (if there are answers)
         if exam.answers:
             self._add_page_break(doc)
+            self._add_header(doc, title, "Answer Key")
             for answer in exam.answers:
                 self._add_answer(doc, answer, exam_type)
 
@@ -67,40 +64,69 @@ class WordFormatter(BaseFormatter):
 
     def _setup_document(self, doc: Document):
         """Configure document margins and default styles."""
-        # Set margins
         for section in doc.sections:
             section.top_margin = Inches(MARGIN_INCHES)
             section.bottom_margin = Inches(MARGIN_INCHES)
             section.left_margin = Inches(MARGIN_INCHES)
             section.right_margin = Inches(MARGIN_INCHES)
 
-        # Set default font
         style = doc.styles['Normal']
         font = style.font
         font.name = BODY_FONT
         font.size = Pt(BODY_SIZE)
-
-        # Also set font for East Asian text
         style.element.rPr.rFonts.set(qn('w:eastAsia'), BODY_FONT)
 
+    def _add_header(self, doc: Document, title: str, section_name: str):
+        """
+        Add centered bold 20pt header with two lines:
+        Line 1: Title (from input)
+        Line 2: Section name (Questions or Answer Key)
+        """
+        # Line 1: Title
+        title_para = doc.add_paragraph()
+        title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        title_para.paragraph_format.space_before = Pt(0)
+        title_para.paragraph_format.space_after = Pt(0)
+        run = title_para.add_run(title)
+        run.font.name = BODY_FONT
+        run.font.size = Pt(20)
+        run.font.bold = True
+        self._set_keep_with_next(title_para, True)
+
+        # Line 2: Section name
+        section_para = doc.add_paragraph()
+        section_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        section_para.paragraph_format.space_before = Pt(0)
+        section_para.paragraph_format.space_after = Pt(24)
+        run = section_para.add_run(section_name)
+        run.font.name = BODY_FONT
+        run.font.size = Pt(20)
+        run.font.bold = True
+
     def _add_question(self, doc: Document, question: Question):
-        """Add a question with its choices to the document."""
+        """
+        Add a question with its choices to the document.
+
+        Uses keep_with_next on all paragraphs except the last choice
+        to ensure the entire question block stays on one page.
+        """
         # Add question text
         q_para = doc.add_paragraph()
         q_para.add_run(f"{question.number}.\t{question.text}")
-
-        # Format question paragraph - space after for blank line
         self._format_paragraph(q_para, 'question')
 
-        # Add choices - each with a blank line after
-        for choice in question.choices:
+        # Add choices - keep_with_next on all except the last
+        num_choices = len(question.choices)
+        for i, choice in enumerate(question.choices):
             c_para = doc.add_paragraph()
             c_para.add_run(f"{choice.letter}.\t{choice.text}")
 
-            # Every choice gets a blank line after it
-            self._format_paragraph(c_para, 'choice')
+            is_last = (i == num_choices - 1)
+            if is_last:
+                self._format_paragraph(c_para, 'choice_last')
+            else:
+                self._format_paragraph(c_para, 'choice')
 
-            # Set indentation for choices
             c_para.paragraph_format.left_indent = Inches(CHOICE_INDENT_INCHES)
 
     def _add_answer(self, doc: Document, answer: Answer, exam_type: ExamType):
@@ -108,12 +134,10 @@ class WordFormatter(BaseFormatter):
         a_para = doc.add_paragraph()
 
         if exam_type == ExamType.PRACTICE:
-            # Practice: "#.    <letter>    <code ref>" - no ) after letter
             a_para.add_run(
                 f"{answer.question_number}.\t{answer.answer_letter}\t{answer.payload}"
             )
         else:
-            # Final: "#.    <letter>)    <source> (<citation>)"
             a_para.add_run(
                 f"{answer.question_number}.\t{answer.answer_letter})\t{answer.payload}"
             )
@@ -125,35 +149,39 @@ class WordFormatter(BaseFormatter):
         Apply formatting to a paragraph based on its type.
 
         Types:
-        - 'question': Question text (blank line after, keep with next)
-        - 'choice': Choice text (blank line after each)
-        - 'answer': Answer key entry (blank line after)
+        - 'question': Keep with next, blank line after
+        - 'choice': Keep with next (not last choice), blank line after
+        - 'choice_last': Last choice in a question block, blank line after
+        - 'answer': Answer key entry, blank line after
         """
         fmt = para.paragraph_format
 
         # Common settings
         fmt.space_before = Pt(0)
-        fmt.line_spacing = 1.0  # Single spacing
+        fmt.line_spacing = 1.0
         fmt.alignment = WD_ALIGN_PARAGRAPH.LEFT
         fmt.left_indent = Pt(0)
         fmt.first_line_indent = Pt(0)
 
-        # Set font
         for run in para.runs:
             run.font.name = BODY_FONT
             run.font.size = Pt(BODY_SIZE)
             run.font.bold = False
 
         if para_type == 'question':
-            fmt.space_after = Pt(12)  # Blank line after question text
+            fmt.space_after = Pt(12)
             self._set_keep_together(para, True)
             self._set_keep_with_next(para, True)
 
         elif para_type == 'choice':
-            # Every choice gets a blank line after it
             fmt.space_after = Pt(12)
             self._set_keep_together(para, True)
-            self._set_keep_with_next(para, False)
+            self._set_keep_with_next(para, True)  # Keep with next choice
+
+        elif para_type == 'choice_last':
+            fmt.space_after = Pt(12)
+            self._set_keep_together(para, True)
+            self._set_keep_with_next(para, False)  # Last choice, OK to break after
 
         elif para_type == 'answer':
             fmt.space_after = Pt(12)
@@ -164,7 +192,6 @@ class WordFormatter(BaseFormatter):
         """Set paragraph keep-together property using XML."""
         pPr = para._element.get_or_add_pPr()
         keep_lines = pPr.find(qn('w:keepLines'))
-
         if value:
             if keep_lines is None:
                 keep_lines = OxmlElement('w:keepLines')
@@ -177,7 +204,6 @@ class WordFormatter(BaseFormatter):
         """Set paragraph keep-with-next property using XML."""
         pPr = para._element.get_or_add_pPr()
         keep_next = pPr.find(qn('w:keepNext'))
-
         if value:
             if keep_next is None:
                 keep_next = OxmlElement('w:keepNext')
