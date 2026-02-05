@@ -105,7 +105,6 @@ document.addEventListener('DOMContentLoaded', () => {
             formattedData = data;
             displayFormattedOutput(data, examType);
             updateStats(data.stats);
-            downloadButtons.classList.add('visible');
 
             // Show warning if question/answer counts don't match
             if (data.warning) {
