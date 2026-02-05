@@ -554,25 +554,57 @@ body {
     transform: translateY(-1px) scale(0.98);
 }
 
-/* Format Button Specific */
+/* Exam Type Buttons Container */
+.exam-type-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* Format Button Base */
 .format-button {
-    min-width: 160px;
-    background: linear-gradient(135deg, rgba(0, 212, 255, 0.2) 0%, rgba(124, 58, 237, 0.2) 100%);
+    min-width: 200px;
+    padding: 16px 28px;
+    font-size: 0.85rem;
+    letter-spacing: 1.5px;
+}
+
+/* Practice Exam Button */
+.practice-button {
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.2) 0%, rgba(16, 185, 129, 0.2) 100%);
     border-color: rgba(0, 212, 255, 0.4);
 }
 
-.format-button:hover {
-    background: linear-gradient(135deg, rgba(0, 212, 255, 0.3) 0%, rgba(124, 58, 237, 0.3) 100%);
+.practice-button:hover {
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.3) 0%, rgba(16, 185, 129, 0.3) 100%);
     border-color: rgba(0, 212, 255, 0.6);
+}
+
+/* Final Exam Button */
+.final-button {
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.2) 0%, rgba(239, 68, 68, 0.15) 100%);
+    border-color: rgba(124, 58, 237, 0.4);
+}
+
+.final-button:hover {
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.3) 0%, rgba(239, 68, 68, 0.25) 100%);
+    border-color: rgba(124, 58, 237, 0.6);
 }
 
 .button-icon {
     width: 20px;
     height: 20px;
+    flex-shrink: 0;
+}
+
+.button-arrow {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
     transition: transform 0.3s ease;
 }
 
-.format-button:hover .button-icon {
+.format-button:hover .button-arrow {
     transform: translateX(5px);
 }
 
@@ -788,7 +820,7 @@ body {
     color: var(--text-primary);
 }
 
-/* Answer line: "#.    A)    <payload>" */
+/* Answer line base */
 .answer-line {
     margin-bottom: 0;
 }
@@ -799,7 +831,16 @@ body {
     color: var(--text-primary);
 }
 
+/* Final exam answer: letter with ) */
 .answer-line .a-letter {
+    min-width: 35px;
+    flex-shrink: 0;
+    color: var(--accent-cyan);
+    font-weight: 600;
+}
+
+/* Practice exam answer: letter without ) */
+.answer-line .a-letter-practice {
     min-width: 35px;
     flex-shrink: 0;
     color: var(--accent-cyan);
@@ -856,6 +897,10 @@ body {
     .action-container {
         flex-direction: row;
         padding: 15px 0;
+    }
+
+    .exam-type-buttons {
+        flex-direction: row;
     }
 
     .download-buttons {

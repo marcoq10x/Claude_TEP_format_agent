@@ -3,6 +3,7 @@ Base formatter class defining the interface for all output formatters.
 """
 
 from abc import ABC, abstractmethod
+from enum import Enum
 from pathlib import Path
 from typing import Union
 
@@ -15,6 +16,12 @@ BODY_SIZE = 12  # points
 MARGIN_INCHES = 0.5
 CHOICE_INDENT_INCHES = 0.25
 BLANK_LINE_PTS = 12  # approximately one blank line at 12pt single spacing
+
+
+class ExamType(Enum):
+    """Type of exam formatting to apply."""
+    PRACTICE = "practice"
+    FINAL = "final"
 
 
 class BaseFormatter(ABC):
@@ -32,13 +39,15 @@ class BaseFormatter(ABC):
         self.choice_indent = CHOICE_INDENT_INCHES
 
     @abstractmethod
-    def format(self, exam: ParsedExam, output_path: Union[str, Path]) -> Path:
+    def format(self, exam: ParsedExam, output_path: Union[str, Path],
+               exam_type: ExamType = ExamType.FINAL) -> Path:
         """
         Format the parsed exam content and save to a file.
 
         Args:
             exam: ParsedExam containing questions and answers
             output_path: Path where the output file should be saved
+            exam_type: Type of exam (practice or final) for answer formatting
 
         Returns:
             Path to the created file

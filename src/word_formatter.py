@@ -13,7 +13,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
-from .formatter import BaseFormatter, BODY_FONT, BODY_SIZE, MARGIN_INCHES, CHOICE_INDENT_INCHES
+from .formatter import BaseFormatter, ExamType, BODY_FONT, BODY_SIZE, MARGIN_INCHES, CHOICE_INDENT_INCHES
 from .parser import ParsedExam, Question, Answer
 
 
@@ -25,21 +25,24 @@ class WordFormatter(BaseFormatter):
     - Times New Roman, 12pt font
     - 0.5 inch margins
     - Questions formatted as "#.\\t<text>"
-    - Choices indented 0.25 inches as "A.\\t<text>"
+    - Choices each on own line with blank line after each
     - Answer key on a new page
-    - MCQ blocks kept together (not split across pages)
+    - Practice exam answers: "#.\\t<letter>\\t<code ref>"
+    - Final exam answers: "#.\\t<letter>)\\t<source> (<citation>)"
     """
 
     def get_extension(self) -> str:
         return '.docx'
 
-    def format(self, exam: ParsedExam, output_path: Union[str, Path]) -> Path:
+    def format(self, exam: ParsedExam, output_path: Union[str, Path],
+               exam_type: ExamType = ExamType.FINAL) -> Path:
         """
         Format exam content into a Word document.
 
         Args:
             exam: ParsedExam containing questions and answers
             output_path: Path for the output .docx file
+            exam_type: Type of exam (practice or final)
 
         Returns:
             Path to the created Word document
@@ -57,7 +60,7 @@ class WordFormatter(BaseFormatter):
         if exam.answers:
             self._add_page_break(doc)
             for answer in exam.answers:
-                self._add_answer(doc, answer)
+                self._add_answer(doc, answer, exam_type)
 
         doc.save(str(output_path))
         return output_path
@@ -86,25 +89,34 @@ class WordFormatter(BaseFormatter):
         q_para = doc.add_paragraph()
         q_para.add_run(f"{question.number}.\t{question.text}")
 
-        # Format question paragraph
+        # Format question paragraph - space after for blank line
         self._format_paragraph(q_para, 'question')
 
-        # Add choices
-        for i, choice in enumerate(question.choices):
-            is_last = (i == len(question.choices) - 1)
+        # Add choices - each with a blank line after
+        for choice in question.choices:
             c_para = doc.add_paragraph()
             c_para.add_run(f"{choice.letter}.\t{choice.text}")
 
-            choice_type = 'choice_last' if is_last else 'choice'
-            self._format_paragraph(c_para, choice_type)
+            # Every choice gets a blank line after it
+            self._format_paragraph(c_para, 'choice')
 
             # Set indentation for choices
             c_para.paragraph_format.left_indent = Inches(CHOICE_INDENT_INCHES)
 
-    def _add_answer(self, doc: Document, answer: Answer):
+    def _add_answer(self, doc: Document, answer: Answer, exam_type: ExamType):
         """Add an answer key entry to the document."""
         a_para = doc.add_paragraph()
-        a_para.add_run(f"{answer.question_number}.\t{answer.answer_letter})\t{answer.payload}")
+
+        if exam_type == ExamType.PRACTICE:
+            # Practice: "#.    <letter>    <code ref>" - no ) after letter
+            a_para.add_run(
+                f"{answer.question_number}.\t{answer.answer_letter}\t{answer.payload}"
+            )
+        else:
+            # Final: "#.    <letter>)    <source> (<citation>)"
+            a_para.add_run(
+                f"{answer.question_number}.\t{answer.answer_letter})\t{answer.payload}"
+            )
 
         self._format_paragraph(a_para, 'answer')
 
@@ -113,10 +125,9 @@ class WordFormatter(BaseFormatter):
         Apply formatting to a paragraph based on its type.
 
         Types:
-        - 'question': Question text (keep with next choice)
-        - 'choice': Non-final choice (keep with next)
-        - 'choice_last': Final choice (space after)
-        - 'answer': Answer key entry
+        - 'question': Question text (blank line after, keep with next)
+        - 'choice': Choice text (blank line after each)
+        - 'answer': Answer key entry (blank line after)
         """
         fmt = para.paragraph_format
 
@@ -139,12 +150,8 @@ class WordFormatter(BaseFormatter):
             self._set_keep_with_next(para, True)
 
         elif para_type == 'choice':
-            fmt.space_after = Pt(0)
-            self._set_keep_together(para, True)
-            self._set_keep_with_next(para, True)
-
-        elif para_type == 'choice_last':
-            fmt.space_after = Pt(12)  # Blank line after last choice
+            # Every choice gets a blank line after it
+            fmt.space_after = Pt(12)
             self._set_keep_together(para, True)
             self._set_keep_with_next(para, False)
 

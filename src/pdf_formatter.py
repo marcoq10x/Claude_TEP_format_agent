@@ -15,7 +15,7 @@ from reportlab.platypus import (
 )
 from reportlab.lib.enums import TA_LEFT
 
-from .formatter import BaseFormatter, BODY_FONT, BODY_SIZE, MARGIN_INCHES, CHOICE_INDENT_INCHES
+from .formatter import BaseFormatter, ExamType, BODY_FONT, BODY_SIZE, MARGIN_INCHES, CHOICE_INDENT_INCHES
 from .parser import ParsedExam, Question, Answer
 
 
@@ -27,9 +27,10 @@ class PDFFormatter(BaseFormatter):
     - Times New Roman (Times-Roman in ReportLab), 12pt font
     - 0.5 inch margins
     - Questions formatted as "#.\\t<text>"
-    - Choices indented 0.25 inches as "A.\\t<text>"
+    - Choices each on own line with blank line after each
     - Answer key on a new page
-    - MCQ blocks kept together (not split across pages)
+    - Practice exam answers: "#.\\t<letter>\\t<code ref>"
+    - Final exam answers: "#.\\t<letter>)\\t<source> (<citation>)"
     """
 
     # ReportLab font name for Times New Roman
@@ -38,13 +39,15 @@ class PDFFormatter(BaseFormatter):
     def get_extension(self) -> str:
         return '.pdf'
 
-    def format(self, exam: ParsedExam, output_path: Union[str, Path]) -> Path:
+    def format(self, exam: ParsedExam, output_path: Union[str, Path],
+               exam_type: ExamType = ExamType.FINAL) -> Path:
         """
         Format exam content into a PDF document.
 
         Args:
             exam: ParsedExam containing questions and answers
             output_path: Path for the output .pdf file
+            exam_type: Type of exam (practice or final)
 
         Returns:
             Path to the created PDF document
@@ -76,7 +79,7 @@ class PDFFormatter(BaseFormatter):
         if exam.answers:
             story.append(PageBreak())
             for answer in exam.answers:
-                answer_para = self._create_answer_paragraph(answer, styles)
+                answer_para = self._create_answer_paragraph(answer, styles, exam_type)
                 story.append(answer_para)
                 story.append(Spacer(1, 12))
 
@@ -99,21 +102,9 @@ class PDFFormatter(BaseFormatter):
             firstLineIndent=0,
         )
 
-        # Choice style (indented)
+        # Choice style (indented) - every choice has blank line after
         styles['choice'] = ParagraphStyle(
             'Choice',
-            fontName=self.PDF_FONT,
-            fontSize=BODY_SIZE,
-            leading=BODY_SIZE * 1.2,
-            alignment=TA_LEFT,
-            spaceAfter=0,
-            leftIndent=CHOICE_INDENT_INCHES * inch,
-            firstLineIndent=0,
-        )
-
-        # Last choice style (with space after)
-        styles['choice_last'] = ParagraphStyle(
-            'ChoiceLast',
             fontName=self.PDF_FONT,
             fontSize=BODY_SIZE,
             leading=BODY_SIZE * 1.2,
@@ -149,22 +140,26 @@ class PDFFormatter(BaseFormatter):
         q_text = self._escape_text(f"{question.number}.    {question.text}")
         block.append(Paragraph(q_text, styles['question']))
 
-        # Choices
-        for i, choice in enumerate(question.choices):
-            is_last = (i == len(question.choices) - 1)
-            style = styles['choice_last'] if is_last else styles['choice']
-
+        # Choices - each with blank line after
+        for choice in question.choices:
             c_text = self._escape_text(f"{choice.letter}.    {choice.text}")
-            block.append(Paragraph(c_text, style))
+            block.append(Paragraph(c_text, styles['choice']))
 
         return block
 
-    def _create_answer_paragraph(self, answer: Answer, styles: dict) -> Paragraph:
+    def _create_answer_paragraph(self, answer: Answer, styles: dict,
+                                  exam_type: ExamType) -> Paragraph:
         """Create a paragraph for an answer key entry."""
-        # Format: "#.    A)    payload"
-        a_text = self._escape_text(
-            f"{answer.question_number}.    {answer.answer_letter})    {answer.payload}"
-        )
+        if exam_type == ExamType.PRACTICE:
+            # Practice: "#.    <letter>    <code ref>"
+            a_text = self._escape_text(
+                f"{answer.question_number}.    {answer.answer_letter}    {answer.payload}"
+            )
+        else:
+            # Final: "#.    <letter>)    <source> (<citation>)"
+            a_text = self._escape_text(
+                f"{answer.question_number}.    {answer.answer_letter})    {answer.payload}"
+            )
         return Paragraph(a_text, styles['answer'])
 
     def _escape_text(self, text: str) -> str:

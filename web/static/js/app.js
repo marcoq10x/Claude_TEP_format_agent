@@ -7,7 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements
     const inputText = document.getElementById('input-text');
     const outputContent = document.getElementById('output-content');
-    const formatBtn = document.getElementById('format-btn');
+    const practiceBtn = document.getElementById('practice-btn');
+    const finalBtn = document.getElementById('final-btn');
     const downloadButtons = document.getElementById('download-buttons');
     const charCount = document.getElementById('char-count');
     const qCount = document.getElementById('q-count');
@@ -17,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // State
     let currentText = '';
+    let currentExamType = null;
     let formattedData = null;
 
     // Character count update
@@ -25,16 +27,26 @@ document.addEventListener('DOMContentLoaded', () => {
         currentText = inputText.value;
     });
 
-    // Format button click
-    formatBtn.addEventListener('click', async () => {
+    // Practice Exam button click
+    practiceBtn.addEventListener('click', async () => {
         const text = inputText.value.trim();
-
         if (!text) {
             showToast('Please enter some text to format', 'error');
             return;
         }
+        currentExamType = 'practice';
+        await formatText(text, 'practice');
+    });
 
-        await formatText(text);
+    // Final Exam button click
+    finalBtn.addEventListener('click', async () => {
+        const text = inputText.value.trim();
+        if (!text) {
+            showToast('Please enter some text to format', 'error');
+            return;
+        }
+        currentExamType = 'final';
+        await formatText(text, 'final');
     });
 
     // Download button clicks
@@ -48,22 +60,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            await downloadFile(text, format);
+            if (!currentExamType) {
+                showToast('Please format the text first using Practice or Final Exam', 'error');
+                return;
+            }
+
+            await downloadFile(text, format, currentExamType);
         });
     });
 
-    // Keyboard shortcut (Ctrl/Cmd + Enter to format)
+    // Keyboard shortcuts (Ctrl/Cmd + Enter for practice, Ctrl/Cmd + Shift + Enter for final)
     inputText.addEventListener('keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
             e.preventDefault();
-            formatBtn.click();
+            if (e.shiftKey) {
+                finalBtn.click();
+            } else {
+                practiceBtn.click();
+            }
         }
     });
 
     /**
-     * Format the input text
+     * Format the input text with the specified exam type
      */
-    async function formatText(text) {
+    async function formatText(text, examType) {
         showLoading(true);
 
         try {
@@ -72,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ text }),
+                body: JSON.stringify({ text, exam_type: examType }),
             });
 
             const data = await response.json();
@@ -82,10 +103,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             formattedData = data;
-            displayFormattedOutput(data);
+            displayFormattedOutput(data, examType);
             updateStats(data.stats);
             downloadButtons.classList.add('visible');
-            showToast('Formatted successfully!', 'success');
+
+            // Show warning if question/answer counts don't match
+            if (data.warning) {
+                showToast(data.warning, 'error');
+            } else {
+                const label = examType === 'practice' ? 'Practice Exam' : 'Final Exam';
+                showToast(`Formatted as ${label} successfully!`, 'success');
+            }
 
         } catch (error) {
             console.error('Format error:', error);
@@ -98,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /**
      * Download formatted file
      */
-    async function downloadFile(text, format) {
+    async function downloadFile(text, format, examType) {
         showLoading(true);
 
         try {
@@ -107,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ text }),
+                body: JSON.stringify({ text, exam_type: examType }),
             });
 
             if (!response.ok) {
@@ -120,7 +148,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `formatted_exam.${format}`;
+            const typeLabel = examType === 'practice' ? 'practice' : 'final';
+            a.download = `formatted_${typeLabel}_exam.${format}`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
@@ -137,35 +166,40 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Display formatted output in the right panel
-     * Matches VBA macro format EXACTLY:
+     * Display formatted output in the right panel.
      *
-     * QUESTIONS:
-     * 1.    <question text>
+     * Both exam types use the same question format:
+     * #. <question text>
      * <blank line>
-     *       A.    <choice>
-     *       B.    <choice>
-     *       C.    <choice>
-     *       D.    <choice>
+     * A. <choice>
+     * <blank line>
+     * B. <choice>
+     * <blank line>
+     * C. <choice>
+     * <blank line>
+     * D. <choice>
      * <blank line>
      *
-     * ANSWERS:
-     * 1.    A)    <source> Answer/Citation: <citation>
-     * <blank line>
+     * PRACTICE EXAM answer key:
+     * #.    <letter>    <code reference>
+     *
+     * FINAL EXAM answer key:
+     * #.    <letter>)    <source>    (<citation>)
      */
-    function displayFormattedOutput(data) {
+    function displayFormattedOutput(data, examType) {
         const { questions, answers } = data;
 
         let html = '';
+        const typeLabel = examType === 'practice' ? 'PRACTICE EXAM' : 'FINAL EXAM';
 
-        // Questions section - formatted exactly like VBA output
+        // Questions section - same format for both exam types
         if (questions && questions.length > 0) {
             html += '<div class="formatted-section">';
-            html += '<div class="section-header">QUESTIONS</div>';
+            html += `<div class="section-header">${typeLabel} - QUESTIONS</div>`;
             html += '<div class="document-preview">';
 
             questions.forEach(q => {
-                // Question line: "#.    <question text>"
+                // Question line: "#. <question text>"
                 html += `<div class="doc-line question-line">`;
                 html += `<span class="q-number">${q.number}.</span>`;
                 html += `<span class="q-text">${escapeHtml(q.text)}</span>`;
@@ -174,42 +208,56 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Blank line after question
                 html += '<div class="doc-line blank"></div>';
 
-                // Choices - indented with 0.25 inch
+                // Choices - each followed by a blank line
                 if (q.choices && q.choices.length > 0) {
-                    q.choices.forEach((c, idx) => {
+                    q.choices.forEach(c => {
                         html += `<div class="doc-line choice-line">`;
                         html += `<span class="choice-letter">${c.letter}.</span>`;
                         html += `<span class="choice-text">${escapeHtml(c.text)}</span>`;
                         html += '</div>';
+
+                        // Blank line after EACH choice
+                        html += '<div class="doc-line blank"></div>';
                     });
                 }
-
-                // Blank line after last choice
-                html += '<div class="doc-line blank"></div>';
             });
 
             html += '</div>';
             html += '</div>';
         }
 
-        // Answer Key section - formatted exactly like VBA output
+        // Answer Key section - different format based on exam type
         if (answers && answers.length > 0) {
             html += '<div class="formatted-section answer-key-section">';
-            html += '<div class="section-header">ANSWER KEY</div>';
+            html += `<div class="section-header">${typeLabel} - ANSWER KEY</div>`;
             html += '<div class="page-break-note">(Starts on new page in Word/PDF)</div>';
             html += '<div class="document-preview">';
 
-            answers.forEach(a => {
-                // Answer line: "#.    A)    <payload>"
-                html += `<div class="doc-line answer-line">`;
-                html += `<span class="a-number">${a.number}.</span>`;
-                html += `<span class="a-letter">${a.letter})</span>`;
-                html += `<span class="a-payload">${escapeHtml(a.payload)}</span>`;
-                html += '</div>';
+            if (examType === 'practice') {
+                // Practice exam answer format: "#.    <letter>    <code ref>"
+                answers.forEach(a => {
+                    html += `<div class="doc-line answer-line answer-practice">`;
+                    html += `<span class="a-number">${a.number}.</span>`;
+                    html += `<span class="a-letter-practice">${a.letter}</span>`;
+                    html += `<span class="a-payload">${escapeHtml(a.payload)}</span>`;
+                    html += '</div>';
 
-                // Blank line after each answer
-                html += '<div class="doc-line blank"></div>';
-            });
+                    // Blank line after each answer
+                    html += '<div class="doc-line blank"></div>';
+                });
+            } else {
+                // Final exam answer format: "#.    <letter>)    <source>    (<citation>)"
+                answers.forEach(a => {
+                    html += `<div class="doc-line answer-line answer-final">`;
+                    html += `<span class="a-number">${a.number}.</span>`;
+                    html += `<span class="a-letter">${a.letter})</span>`;
+                    html += `<span class="a-payload">${escapeHtml(a.payload)}</span>`;
+                    html += '</div>';
+
+                    // Blank line after each answer
+                    html += '<div class="doc-line blank"></div>';
+                });
+            }
 
             html += '</div>';
             html += '</div>';

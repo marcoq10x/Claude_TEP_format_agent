@@ -48,6 +48,21 @@ class ParsedExam:
     questions: list[Question] = field(default_factory=list)
     answers: list[Answer] = field(default_factory=list)
 
+    @property
+    def is_balanced(self) -> bool:
+        """Check if question and answer counts match (1:1 ratio)."""
+        return len(self.questions) == len(self.answers)
+
+    @property
+    def mismatch_info(self) -> str:
+        """Return info about any question/answer count mismatch."""
+        q_count = len(self.questions)
+        a_count = len(self.answers)
+        if q_count == a_count:
+            return ""
+        return (f"Mismatch: {q_count} questions but {a_count} answers. "
+                f"Expected 1:1 ratio.")
+
 
 class ExamParser:
     """
