@@ -222,7 +222,8 @@ class ExamParser:
         Detect if a line looks like an answer entry rather than a question.
 
         Answer entries typically have patterns like:
-        - Q1 A) with citation/page reference
+        - "#. <letter>) <payload>" - number, then letter with closing paren
+        - "Q# <letter>) <payload>" - Q prefix with number, then letter with closing paren
         - Contains "Answer/Citation" label
         - Has page reference along with answer letter
         """
@@ -230,6 +231,12 @@ class ExamParser:
 
         # Check for explicit Answer/Citation marker
         if 'ANSWER/CITATION' in upper:
+            return True
+
+        # Check for answer format: starts with number, then answer letter with )
+        # Pattern: [Q]#[.):] <letter>) - this is a clear answer format
+        match = re.match(r'^[Qq]?(\d+)[.):]*\s*([A-Da-d])\)', line)
+        if match:
             return True
 
         # Check for Q# pattern with answer letter and page reference
