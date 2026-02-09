@@ -223,6 +223,7 @@ class ExamParser:
 
         Answer entries typically have patterns like:
         - "#. <letter>) <payload>" - number, then letter with closing paren
+        - "#. <letter> <code>" - number, then letter, then code reference (practice format)
         - "Q# <letter>) <payload>" - Q prefix with number, then letter with closing paren
         - Contains "Answer/Citation" label
         - Has page reference along with answer letter
@@ -233,11 +234,21 @@ class ExamParser:
         if 'ANSWER/CITATION' in upper:
             return True
 
-        # Check for answer format: starts with number, then answer letter with )
-        # Pattern: [Q]#[.):] <letter>) - this is a clear answer format
+        # Check for answer format WITH closing paren: [Q]#[.):] <letter>)
         match = re.match(r'^[Qq]?(\d+)[.):]*\s*([A-Da-d])\)', line)
         if match:
             return True
+
+        # Check for answer format WITHOUT closing paren: [Q]#[.):] <letter><whitespace><code>
+        # This handles formats like "1. A 500.6(A)(1)" or "1. A	500.6(A)(1)"
+        match = re.match(r'^[Qq]?(\d+)[.):]*\s*([A-Da-d])[\s\t]+(\S+)', line)
+        if match:
+            letter = match.group(2).upper()
+            content = match.group(3)
+            # If content looks like a code reference (contains numbers/dots/parens), it's an answer
+            # Code refs look like: 500.6(A)(1), 1926.62, etc.
+            if re.search(r'\d+\.|\(\w+\)|§|\d{3,}', content):
+                return True
 
         # Check for Q# pattern with answer letter and page reference
         if upper.startswith('Q') or (upper and upper[0].isdigit()):
@@ -283,18 +294,19 @@ class ExamParser:
 
             return current_question, pending_choices
 
-        # Try to parse as a choice line
+        # Try to parse inline choices FIRST (before single choice)
+        # This handles lines like "A. Option 1 B. Option 2 C. Option 3 D. Option 4"
+        inline_choices = self._parse_inline_choices(line)
+        if len(inline_choices) == 4:  # All four choices found
+            pending_choices = inline_choices
+            return current_question, pending_choices
+
+        # Try to parse as a single choice line
         c_match = self.CHOICE_PATTERN.match(line)
         if c_match:
             letter = c_match.group(1).upper()
             text = c_match.group(2).strip()
             pending_choices.append(Choice(letter=letter, text=text))
-            return current_question, pending_choices
-
-        # Try to parse inline choices
-        inline_choices = self._parse_inline_choices(line)
-        if len(inline_choices) == 4:  # All four choices found
-            pending_choices = inline_choices
             return current_question, pending_choices
 
         # Continuation of previous question text
@@ -454,7 +466,13 @@ class ExamParser:
         return None
 
     def _extract_answer_letter(self, text: str) -> str:
-        """Extract answer letter (A, B, C, or D) from text."""
+        """Extract answer letter (A, B, C, or D) from answer text.
+
+        The answer letter appears right after the question number, e.g.:
+        - "1. A) payload" -> A
+        - "1. A 500.6(A)(1)" -> A (practice format, no closing paren)
+        - Q1 "B" citation -> B (quoted format)
+        """
         # First check for quoted answer
         quoted = self._extract_quoted_text(text)
         if quoted:
@@ -462,11 +480,17 @@ class ExamParser:
             if letter:
                 return letter
 
-        # Look for pattern like "A)" or "A." anywhere in text
-        for i, char in enumerate(text):
-            if char.upper() in 'ABCD':
-                if i + 1 < len(text) and text[i + 1] in '.)':
-                    return char.upper()
+        # Look for pattern "#. <letter>)" or "#. <letter>." right after question number
+        # This handles final exam format: "1. A) payload"
+        match = re.match(r'^[Qq]?(\d+)[.):]*\s*([A-Da-d])[.)]\s*', text)
+        if match:
+            return match.group(2).upper()
+
+        # Look for pattern "#. <letter><whitespace>" (practice exam format)
+        # This handles: "1. A 500.6(A)(1)" or "1. A	code"
+        match = re.match(r'^[Qq]?(\d+)[.):]*\s*([A-Da-d])[\s\t]+', text)
+        if match:
+            return match.group(2).upper()
 
         return ''
 
@@ -558,14 +582,18 @@ class ExamParser:
         return text[start:].strip()
 
     def _strip_answer_marker(self, text: str, ans_letter: str) -> str:
-        """Remove leading answer marker like 'A)' or 'A.' from text."""
+        """Remove leading answer marker like 'A)', 'A.', or 'A ' from text."""
         text = text.strip()
         if not text:
             return ''
 
         if text[0].upper() == ans_letter.upper():
+            # Handle 'A)' or 'A.' format
             if len(text) >= 2 and text[1] in '.)':
                 return text[2:].strip()
+            # Handle 'A ' or 'A\t' format (letter followed by whitespace)
+            if len(text) >= 2 and text[1] in ' \t':
+                return text[1:].strip()
 
         return text
 
