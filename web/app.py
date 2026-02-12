@@ -17,6 +17,8 @@ from src.formatter import ExamType
 from src.word_formatter import WordFormatter
 from src.pdf_formatter import PDFFormatter
 from src.txt_formatter import TxtFormatter
+from src.csv_formatter import CSVFormatter
+from src.rtf_formatter import RTFFormatter
 
 app = Flask(__name__,
             template_folder='templates',
@@ -123,6 +125,8 @@ def download_file(format_type):
         'docx': (WordFormatter(), 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
         'pdf': (PDFFormatter(), 'application/pdf'),
         'txt': (TxtFormatter(), 'text/plain'),
+        'csv': (CSVFormatter(), 'text/csv'),
+        'rtf': (RTFFormatter(), 'application/rtf'),
     }
 
     if format_type not in formatters:
