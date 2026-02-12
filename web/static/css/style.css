@@ -1086,6 +1086,20 @@ body {
     color: var(--accent-cyan);
 }
 
+.file-icon-badge {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+    color: #020024;
+    font-size: 0.7rem;
+    font-weight: 700;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
 .file-name {
     font-size: 0.9rem;
     color: var(--text-primary);

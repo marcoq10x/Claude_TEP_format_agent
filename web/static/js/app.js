@@ -34,7 +34,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentExamType = null;
     let formattedData = null;
     let currentMode = 'paste'; // 'paste' or 'upload'
-    let uploadedFiles = []; // Array of {name, content} objects
+    let uploadedFiles = []; // Array of File objects
+    let extractedContents = {}; // Map of filename -> extracted content (for download)
+
+    // Supported file extensions
+    const SUPPORTED_EXTENSIONS = ['.txt', '.docx', '.pdf', '.csv', '.rtf'];
 
     // Tab switching
     inputTabs.forEach(tab => {
@@ -97,12 +101,21 @@ document.addEventListener('DOMContentLoaded', () => {
         handleFiles(e.target.files);
     });
 
+    function isValidFile(filename) {
+        const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'));
+        return SUPPORTED_EXTENSIONS.includes(ext);
+    }
+
     async function handleFiles(files) {
         const maxFiles = 20;
-        const validFiles = Array.from(files).filter(f => f.name.endsWith('.txt'));
+        const validFiles = Array.from(files).filter(f => isValidFile(f.name));
+        const invalidFiles = Array.from(files).filter(f => !isValidFile(f.name));
+
+        if (invalidFiles.length > 0) {
+            showToast(`Unsupported files skipped. Supported: ${SUPPORTED_EXTENSIONS.join(', ')}`, 'error');
+        }
 
         if (validFiles.length === 0) {
-            showToast('Please upload .txt files only', 'error');
             return;
         }
 
@@ -111,17 +124,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Store actual File objects (not reading content client-side)
         for (const file of validFiles) {
-            try {
-                const content = await readFileContent(file);
-                uploadedFiles.push({
-                    name: file.name,
-                    content: content,
-                    size: file.size
-                });
-            } catch (err) {
-                console.error(`Error reading ${file.name}:`, err);
-                showToast(`Failed to read ${file.name}`, 'error');
+            // Check for duplicates
+            if (!uploadedFiles.some(f => f.name === file.name && f.size === file.size)) {
+                uploadedFiles.push(file);
             }
         }
 
@@ -129,13 +136,19 @@ document.addEventListener('DOMContentLoaded', () => {
         fileInput.value = ''; // Reset input
     }
 
-    function readFileContent(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
-            reader.onerror = (e) => reject(e);
-            reader.readAsText(file);
-        });
+    function getFileExtension(filename) {
+        return filename.toLowerCase().substring(filename.lastIndexOf('.'));
+    }
+
+    function getFileIcon(ext) {
+        const icons = {
+            '.txt': 'T',
+            '.docx': 'W',
+            '.pdf': 'P',
+            '.csv': 'C',
+            '.rtf': 'R'
+        };
+        return icons[ext] || 'F';
     }
 
     function updateFileList() {
@@ -149,13 +162,12 @@ document.addEventListener('DOMContentLoaded', () => {
         let html = '';
         uploadedFiles.forEach((file, index) => {
             const sizeKB = (file.size / 1024).toFixed(1);
+            const ext = getFileExtension(file.name);
+            const iconLetter = getFileIcon(ext);
             html += `
                 <div class="file-item" data-index="${index}">
                     <div class="file-info">
-                        <svg class="file-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M14 2V8H20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
+                        <div class="file-icon-badge" title="${ext.toUpperCase().slice(1)} file">${iconLetter}</div>
                         <span class="file-name">${escapeHtml(file.name)}</span>
                         <span class="file-size">${sizeKB} KB</span>
                     </div>
@@ -303,21 +315,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Format multiple files
+     * Format multiple files using FormData upload
      */
     async function formatMultipleFiles(examType) {
         showLoading(true);
 
         try {
-            const response = await fetch('/api/format-batch', {
+            // Create FormData with actual File objects
+            const formData = new FormData();
+            uploadedFiles.forEach(file => {
+                formData.append('files[]', file);
+            });
+            formData.append('exam_type', examType);
+
+            const response = await fetch('/api/upload-format', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    files: uploadedFiles.map(f => ({ name: f.name, content: f.content })),
-                    exam_type: examType
-                }),
+                body: formData,  // No Content-Type header - browser sets it with boundary
             });
 
             const data = await response.json();
@@ -326,10 +339,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(data.error || 'Batch formatting failed');
             }
 
+            // Store extracted contents for download
+            extractedContents = {};
+            data.results.forEach(result => {
+                if (result.success && result.content) {
+                    extractedContents[result.filename] = result.content;
+                }
+            });
+
             displayBatchResults(data.results, examType);
 
+            const successCount = data.results.filter(r => r.success).length;
             const label = examType === 'practice' ? 'Practice Exam' : 'Final Exam';
-            showToast(`Formatted ${data.results.length} files as ${label}!`, 'success');
+            showToast(`Formatted ${successCount} files as ${label}!`, 'success');
 
         } catch (error) {
             console.error('Batch format error:', error);
@@ -382,21 +404,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Download batch of files as ZIP
+     * Download batch of files as ZIP using FormData upload
      */
     async function downloadBatch(format, examType) {
         showLoading(true);
 
         try {
-            const response = await fetch(`/api/download-batch/${format}`, {
+            // Create FormData with actual File objects
+            const formData = new FormData();
+            uploadedFiles.forEach(file => {
+                formData.append('files[]', file);
+            });
+            formData.append('exam_type', examType);
+
+            const response = await fetch(`/api/upload-download/${format}`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    files: uploadedFiles.map(f => ({ name: f.name, content: f.content })),
-                    exam_type: examType
-                }),
+                body: formData,  // No Content-Type header - browser sets it with boundary
             });
 
             if (!response.ok) {
