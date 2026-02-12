@@ -5,6 +5,7 @@ Flask web server for the LLM Output Formatter dashboard.
 import os
 import io
 import tempfile
+import zipfile
 from pathlib import Path
 from flask import Flask, render_template, request, jsonify, send_file
 
@@ -156,6 +157,158 @@ def download_file(format_type):
             mimetype=mimetype,
             as_attachment=True,
             download_name=f'formatted_{type_label}_exam{formatter.get_extension()}'
+        )
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/format-batch', methods=['POST'])
+def format_batch():
+    """
+    Format multiple files and return results for preview.
+
+    Expects JSON with 'files' array of {name, content} objects
+    and optional 'exam_type' field.
+    """
+    data = request.get_json()
+
+    if not data or 'files' not in data:
+        return jsonify({'error': 'No files provided'}), 400
+
+    files = data['files']
+    if not files or len(files) == 0:
+        return jsonify({'error': 'No files provided'}), 400
+
+    if len(files) > 20:
+        return jsonify({'error': 'Maximum 20 files allowed'}), 400
+
+    exam_type = _get_exam_type(data)
+
+    results = []
+    parser = ExamParser()
+
+    for file_data in files:
+        filename = file_data.get('name', 'unknown.txt')
+        content = file_data.get('content', '')
+
+        try:
+            exam = parser.parse(content)
+
+            result = {
+                'filename': filename,
+                'success': True,
+                'stats': {
+                    'question_count': len(exam.questions),
+                    'answer_count': len(exam.answers)
+                }
+            }
+
+            if not exam.is_balanced:
+                result['warning'] = exam.mismatch_info
+
+            results.append(result)
+
+        except Exception as e:
+            results.append({
+                'filename': filename,
+                'success': False,
+                'error': str(e)
+            })
+
+    return jsonify({
+        'success': True,
+        'results': results,
+        'exam_type': exam_type.value
+    })
+
+
+@app.route('/api/download-batch/<format_type>', methods=['POST'])
+def download_batch(format_type):
+    """
+    Generate and download multiple formatted files as a ZIP.
+
+    format_type: 'docx', 'pdf', 'txt', 'csv', or 'rtf'
+    Expects JSON with 'files' array of {name, content} objects
+    and optional 'exam_type' field.
+    """
+    data = request.get_json()
+
+    if not data or 'files' not in data:
+        return jsonify({'error': 'No files provided'}), 400
+
+    files = data['files']
+    if not files or len(files) == 0:
+        return jsonify({'error': 'No files provided'}), 400
+
+    if len(files) > 20:
+        return jsonify({'error': 'Maximum 20 files allowed'}), 400
+
+    exam_type = _get_exam_type(data)
+
+    # Select formatter
+    formatters = {
+        'docx': (WordFormatter, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+        'pdf': (PDFFormatter, 'application/pdf'),
+        'txt': (TxtFormatter, 'text/plain'),
+        'csv': (CSVFormatter, 'text/csv'),
+        'rtf': (RTFFormatter, 'application/rtf'),
+    }
+
+    if format_type not in formatters:
+        return jsonify({'error': f'Invalid format: {format_type}'}), 400
+
+    FormatterClass, _ = formatters[format_type]
+
+    try:
+        parser = ExamParser()
+
+        # Create ZIP in memory
+        zip_buffer = io.BytesIO()
+
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for file_data in files:
+                filename = file_data.get('name', 'unknown.txt')
+                content = file_data.get('content', '')
+
+                # Parse the content
+                exam = parser.parse(content)
+
+                # Create formatter instance
+                formatter = FormatterClass()
+
+                # Generate output filename
+                base_name = Path(filename).stem
+                output_name = f"{base_name}_formatted{formatter.get_extension()}"
+
+                # Create temporary file for formatting
+                with tempfile.NamedTemporaryFile(
+                    suffix=formatter.get_extension(),
+                    delete=False
+                ) as tmp:
+                    output_path = Path(tmp.name)
+
+                try:
+                    formatter.format(exam, output_path, exam_type)
+
+                    # Read formatted file and add to ZIP
+                    with open(output_path, 'rb') as f:
+                        zip_file.writestr(output_name, f.read())
+                finally:
+                    # Clean up temp file
+                    if output_path.exists():
+                        output_path.unlink()
+
+        # Prepare ZIP for download
+        zip_buffer.seek(0)
+
+        type_label = 'practice' if exam_type == ExamType.PRACTICE else 'final'
+
+        return send_file(
+            zip_buffer,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=f'formatted_{type_label}_exams.zip'
         )
 
     except Exception as e:
