@@ -2,12 +2,14 @@
 """
 LLM Output Formatter - CLI Application
 
-Formats exam content from LLM outputs into Word, PDF, or TXT files.
+Formats exam content from LLM outputs into Word, PDF, TXT, CSV, or RTF files.
 
 Usage:
     python -m src.main input.txt -o output.docx
     python -m src.main input.txt -o output.pdf
     python -m src.main input.txt -o output.txt
+    python -m src.main input.txt -o output.csv
+    python -m src.main input.txt -o output.rtf
     echo "Q1. Question? A. a B. b C. c D. d" | python -m src.main - -o output.docx
 """
 
@@ -21,6 +23,8 @@ from .parser import ExamParser
 from .word_formatter import WordFormatter
 from .pdf_formatter import PDFFormatter
 from .txt_formatter import TxtFormatter
+from .csv_formatter import CSVFormatter
+from .rtf_formatter import RTFFormatter
 
 
 def get_formatter(output_format: str):
@@ -31,13 +35,15 @@ def get_formatter(output_format: str):
         'pdf': PDFFormatter,
         'txt': TxtFormatter,
         'text': TxtFormatter,
+        'csv': CSVFormatter,
+        'rtf': RTFFormatter,
     }
 
     fmt_lower = output_format.lower()
     if fmt_lower not in formatters:
         raise ValueError(
             f"Unsupported format: {output_format}. "
-            f"Supported formats: docx, pdf, txt"
+            f"Supported formats: docx, pdf, txt, csv, rtf"
         )
 
     return formatters[fmt_lower]()
@@ -51,6 +57,8 @@ def detect_format_from_path(path: Path) -> str:
         '.doc': 'docx',
         '.pdf': 'pdf',
         '.txt': 'txt',
+        '.csv': 'csv',
+        '.rtf': 'rtf',
     }
 
     if ext in format_map:
@@ -64,12 +72,12 @@ def detect_format_from_path(path: Path) -> str:
 @click.option(
     '-o', '--output',
     type=click.Path(),
-    help='Output file path. Format detected from extension (.docx, .pdf, .txt)'
+    help='Output file path. Format detected from extension (.docx, .pdf, .txt, .csv, .rtf)'
 )
 @click.option(
     '-f', '--format',
     'output_format',
-    type=click.Choice(['docx', 'pdf', 'txt'], case_sensitive=False),
+    type=click.Choice(['docx', 'pdf', 'txt', 'csv', 'rtf'], case_sensitive=False),
     help='Output format (overrides extension detection)'
 )
 @click.option(
@@ -80,7 +88,7 @@ def detect_format_from_path(path: Path) -> str:
 )
 def main(input_file: str, output: Optional[str], output_format: Optional[str], use_stdin: bool):
     """
-    Format LLM output into Word, PDF, or TXT documents.
+    Format LLM output into Word, PDF, TXT, CSV, or RTF documents.
 
     INPUT_FILE is the path to the input text file, or use '-' for stdin.
 
@@ -94,6 +102,12 @@ def main(input_file: str, output: Optional[str], output_format: Optional[str], u
 
         # Convert to plain text (reformatted)
         python -m src.main exam.txt -o exam_formatted.txt
+
+        # Convert to CSV (spreadsheet format)
+        python -m src.main exam.txt -o exam.csv
+
+        # Convert to RTF (rich text)
+        python -m src.main exam.txt -o exam.rtf
 
         # Read from stdin
         echo "Q1. Question? A. a B. b C. c D. d" | python -m src.main - -o output.docx
@@ -165,7 +179,7 @@ def format_text(
     Args:
         text: Raw exam text from LLM output
         output_path: Path for output file
-        output_format: Optional format override ('docx', 'pdf', 'txt')
+        output_format: Optional format override ('docx', 'pdf', 'txt', 'csv', 'rtf')
 
     Returns:
         Path to created file
