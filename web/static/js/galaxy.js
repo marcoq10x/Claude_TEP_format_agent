@@ -17,10 +17,25 @@
   const canvas = document.querySelector("canvas.webgl");
   const scene = new THREE.Scene();
 
-  const textureLoader = new THREE.TextureLoader();
-  const starTexture = textureLoader.load(
-    "https://assets.codepen.io/22914/star_02.png"
-  );
+  // Generate star texture procedurally (no external dependency)
+  function createStarTexture() {
+    const size = 128;
+    const c = document.createElement("canvas");
+    c.width = size;
+    c.height = size;
+    const ctx = c.getContext("2d");
+    const half = size / 2;
+    const gradient = ctx.createRadialGradient(half, half, 0, half, half, half);
+    gradient.addColorStop(0, "rgba(255,255,255,1)");
+    gradient.addColorStop(0.2, "rgba(255,255,255,0.8)");
+    gradient.addColorStop(0.4, "rgba(255,255,255,0.4)");
+    gradient.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+    const texture = new THREE.CanvasTexture(c);
+    return texture;
+  }
+  const starTexture = createStarTexture();
 
   const sizes = {
     width: window.innerWidth,
