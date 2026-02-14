@@ -8,10 +8,45 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <!-- Parallax Star Background -->
-    <div id="stars"></div>
-    <div id="stars2"></div>
-    <div id="stars3"></div>
+    <!-- Galaxy Background Shaders -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+        uniform float uSize;
+        uniform float uTime;
+        uniform float uHoleSize;
+        attribute float aScale;
+        attribute vec3 aRandomness;
+        varying vec3 vColor;
+        void main() {
+            vec4 modelPosition = modelMatrix * vec4(position, 1.0);
+            float angle = atan(modelPosition.x, modelPosition.z);
+            float distanceToCenter = length(modelPosition.xz) + uHoleSize;
+            float uTimeOffset = uTime + (uHoleSize * 30.0);
+            float angleOffset = (1.0 / distanceToCenter) * uTimeOffset * 0.2;
+            angle += angleOffset;
+            modelPosition.x = cos(angle) * distanceToCenter;
+            modelPosition.z = sin(angle) * distanceToCenter;
+            modelPosition.xyz += aRandomness;
+            vec4 viewPosition = viewMatrix * modelPosition;
+            vec4 projectedPosition = projectionMatrix * viewPosition;
+            gl_Position = projectedPosition;
+            float scale = uSize * aScale;
+            gl_PointSize = scale;
+            gl_PointSize *= ( 1.0 / - viewPosition.z );
+            vColor = color;
+        }
+    </script>
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        varying vec3 vColor;
+        uniform sampler2D uTexture;
+        void main() {
+            gl_FragColor = vec4( vColor, 1.0 );
+            gl_FragColor = gl_FragColor * texture2D(uTexture, vec2( gl_PointCoord.x, gl_PointCoord.y ) );
+            gl_FragColor = gl_FragColor * vec4( vColor, 1.0 );
+        }
+    </script>
+
+    <!-- Galaxy Canvas Background -->
+    <canvas class="webgl"></canvas>
 
     <!-- Main Container -->
     <div class="container">
@@ -236,5 +271,8 @@ Q2 &quot;B&quot; Basic arithmetic (Page 12)"></textarea>
     <div id="toast" class="toast"></div>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="{{ url_for('static', filename='js/galaxy.js') }}"></script>
 </body>
 </html>
