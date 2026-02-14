@@ -16,6 +16,9 @@ After every feature implementation, always report:
 2. Whether a PR needs to be created/merged to `main`
 3. Whether Render.com will auto-deploy (it deploys from `main` branch)
 
+## Git Tags (for rollback)
+- `v1.0-parallax-stars` — Original parallax star background before the galaxy change. To revert: `git checkout v1.0-parallax-stars`
+
 ## Render.com
 - Deploys automatically from `main` branch
 - Start command: `gunicorn web.app:app --bind 0.0.0.0:$PORT`
