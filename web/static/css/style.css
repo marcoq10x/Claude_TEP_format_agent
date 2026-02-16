@@ -454,8 +454,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 25px;
+    justify-content: space-between;
     padding: 0 10px;
     flex-shrink: 0;
 }
@@ -529,6 +528,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 15px;
+    padding-top: 0;
 }
 
 /* Format Button Base */
@@ -541,13 +541,13 @@ body {
 
 /* Practice Exam Button */
 .practice-button {
-    background: linear-gradient(135deg, rgba(0, 212, 255, 0.2) 0%, rgba(16, 185, 129, 0.2) 100%);
-    border-color: rgba(0, 212, 255, 0.4);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(0, 212, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 100%);
+    border-color: rgba(255, 255, 255, 0.4);
 }
 
 .practice-button:hover {
-    background: linear-gradient(135deg, rgba(0, 212, 255, 0.3) 0%, rgba(16, 185, 129, 0.3) 100%);
-    border-color: rgba(0, 212, 255, 0.6);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(0, 212, 255, 0.25) 50%, rgba(255, 255, 255, 0.2) 100%);
+    border-color: rgba(255, 255, 255, 0.6);
 }
 
 /* Final Exam Button */
@@ -583,6 +583,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    padding-bottom: 0;
 }
 
 .download-button {
@@ -979,14 +980,14 @@ body {
 }
 
 .input-tab.active {
-    background: linear-gradient(135deg, rgba(0, 212, 255, 0.2) 0%, rgba(16, 185, 129, 0.2) 100%);
-    border-color: rgba(0, 212, 255, 0.5);
-    color: var(--accent-cyan);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(0, 212, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 100%);
+    border-color: rgba(255, 255, 255, 0.4);
+    color: var(--text-primary);
     box-shadow:
         0 8px 32px rgba(0, 0, 0, 0.3),
-        0 0 0 1px rgba(0, 212, 255, 0.2),
+        0 0 0 1px rgba(255, 255, 255, 0.15),
         inset 0 1px 0 rgba(255, 255, 255, 0.2),
-        0 0 40px rgba(0, 212, 255, 0.15);
+        0 0 40px rgba(0, 212, 255, 0.1);
 }
 
 /* Tab Content */
