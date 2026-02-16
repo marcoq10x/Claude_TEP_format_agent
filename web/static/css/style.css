@@ -598,14 +598,6 @@ body {
     height: 16px;
 }
 
-/* Footer */
-.footer {
-    text-align: center;
-    padding: 15px 0;
-    color: var(--text-muted);
-    font-size: 0.85rem;
-    flex-shrink: 0;
-}
 
 /* Loading Overlay */
 .loading-overlay {
